@@ -1,0 +1,6 @@
+<launch>
+	<rosparam command="load" file="$(find simulator)/config/simulator.yaml" />
+	<node name="GameStateChanger" pkg="simulator" type="game_state_changer.py" output="screen" />
+	<node name="BallSeenChanger" pkg="simulator" type="ball_seen_changer.py" output="screen" />
+	<node name="GoalSeenChanger" pkg="simulator" type="goal_seen_changer.py" output="screen" />
+</launch>

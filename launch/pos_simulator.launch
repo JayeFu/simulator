@@ -1,0 +1,14 @@
+<launch>
+    <node name="RobotPosChanger1" pkg="simulator" type="robot_pos_changer.py" output="screen">
+        <param name="name" type="string" value="robot1" />
+    </node>
+    <node name="RobotPosChanger2" pkg="simulator" type="robot_pos_changer.py" output="screen">
+        <param name="name" type="string" value="robot2" />
+    </node>
+    <node name="RobotPosChanger3" pkg="simulator" type="robot_pos_changer.py" output="screen">
+        <param name="name" type="string" value="robot3" />
+    </node>
+    <node name="RobotPosChanger4" pkg="simulator" type="robot_pos_changer.py" output="screen">
+        <param name="name" type="string" value="robot4" />
+    </node>
+</launch>
