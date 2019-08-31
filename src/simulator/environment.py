@@ -10,91 +10,99 @@ from math import pi as PI
 import json
 
 from std_msgs.msg import String
+from tf.transformations import quaternion_from_euler, euler_from_quaternion
+import tf2_ros
+from geometry_msgs.msg import TransformStamped
 
 from humanoid_league_msgs.msg import Position2D
 
+class Pos2D:
+    def __init__(self, _x=0, _y=0):
+        self.x = _x
+        self.y = _y
+
 class environment:
     def __init__(self):
+        self.robots_name = list()
         self.robots_pos = dict()
-        self.ball_pos = Position2D()
-        # both the messages are JSON ecoded msg
-        self.rpos_pub = rospy.Publisher("/robots_pos", String, queue_size = 2)
-        self.bpos_pub = rospy.Publisher("/ball_pos", String, queue_size = 2)
-
-        # randomlize the ball_pos
+        self.ball_pos = Pos2D()
+        self.tf_broadcaster = tf2_ros.TransformBroadcaster()
+        self.tf_buffer = tf2_ros.Buffer(cache_time=rospy.Duration(2))
+        self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
         
-        self.ball_pos.header.stamp = rospy.Time.now()
-        self.ball_pos.header.frame_id = "map"
-        self.ball_pos.pose.x = 9.0 * random.random() - 4.5
-        self.ball_pos.pose.y = 6.0 * random.random() - 3.0
-        self.ball_pos.confidence = 1.0
-
     def add_robot(self, name):
-        self.robots_pos[name] = Position2D()
-        # define rpos to shorten the code
-        rpos = self.robots_pos[name]
-        # randomlize the robots_pos
-        rpos.header.stamp = rospy.Time.now()
-        rpos.header.frame_id = "map"
-        rpos.pose.x = 9.0 * random.random() - 4.5
-        rpos.pose.y = 6.0 * random.random() - 3.0
-        rpos.pose.theta = 2 * PI * random.random()
-        rpos.confidence = 1.0
+        self.robots_name.append(name)
+        new_x = 9.0 * random.random() - 4.5
+        new_y = 6.0 * random.random() - 3.0
+        self.robots_pos[name] = Pos2D(new_x, new_y)
+
+    def publish_robots(self):
+        for name, pos in self.robots_pos.iteritems():
+            new_tf = TransformStamped()
+            new_tf.header.frame_id = "map"
+            new_tf.header.stamp = rospy.Time.now()
+            new_tf.child_frame_id = name
+            new_tf.transform.translation.x = pos.x
+            new_tf.transform.translation.y = pos.y
+            new_theta = 2 * PI * random.random()
+            q = quaternion_from_euler(0, 0, new_theta)
+            new_tf.transform.rotation.x = q[0]
+            new_tf.transform.rotation.y = q[1]
+            new_tf.transform.rotation.z = q[2]
+            new_tf.transform.rotation.w = q[3]
+            self.tf_broadcaster.sendTransform(new_tf)
+
+    def add_ball(self):
+        self.ball_pos.x = 9.0 * random.random() - 4.5
+        self.ball_pos.y = 6.0 * random.random() - 3.0
+
+    def publish_ball(self):
+        new_tf = TransformStamped()
+        new_tf.header.frame_id = "map"
+        new_tf.header.stamp = rospy.Time.now()
+        new_tf.child_frame_id = "ball"
+        new_tf.transform.translation.x = self.ball_pos.x
+        new_tf.transform.translation.y = self.ball_pos.y
+        q = quaternion_from_euler(0, 0, 0)
+        new_tf.transform.rotation.x = q[0]
+        new_tf.transform.rotation.y = q[1]
+        new_tf.transform.rotation.z = q[2]
+        new_tf.transform.rotation.w = q[3]
+        self.tf_broadcaster.sendTransform(new_tf)
 
     def perform(self):
-        rpos_msg = self.gen_rpos_msg()
-        bpos_msg = self.gen_bpos_msg()
-        outJson_r = json.dumps(rpos_msg)
-        outJson_b = json.dumps(bpos_msg)
+        self.publish_robots()
+        self.publish_ball()
         
-        self.rpos_pub.publish(outJson_r)
-        self.bpos_pub.publish(outJson_b)
+        for name in self.robots_name:
+            try:
+                tf_stamped = self.tf_buffer.lookup_transform(name, "map", rospy.Time(0))
+            except Exception as e:
+                rospy.logwarn(e)
+                return
+            trans = tf_stamped.transform.translation
+            rot = tf_stamped.transform.rotation
+            x = trans.x
+            y = trans.y
+            theta = euler_from_quaternion([rot.x,rot.y,rot.z,rot.w])[2]
+            rospy.loginfo("{} is at x:{}, y:{}, theta:{}".format(name, x, y, theta))
+        try:
+            tf_stamped = self.tf_buffer.lookup_transform("ball", "map", rospy.Time(0))
+        except Exception as e:
+            rospy.logwarn(e)
+            return
+        trans = tf_stamped.transform.translation
+        x = trans.x
+        y = trans.y
+        rospy.loginfo("ball is at x:{}, y:{}".format(x, y))
         
-        for rname, rpos in self.robots_pos.iteritems():
-            rospy.loginfo("{} is at x:{}, y:{}, theta:{}".format(rname, rpos.pose.x, rpos.pose.y, rpos.pose.theta))
-        rospy.loginfo("ball is at x:{}, y:{}".format(self.ball_pos.pose.x, self.ball_pos.pose.y))
-
-    def gen_rpos_msg(self):
-        rpos_msg = dict()
-        now = rospy.Time.now()
-        rpos_msg['frame_id'] = "map"
-        rpos_msg['stamp'] = dict()
-        rpos_msg['stamp']['secs'] = now.secs
-        rpos_msg['stamp']['nsecs'] = now.nsecs
-        for rname, rpos in self.robots_pos.iteritems():
-            rpos_msg[rname] = self._pose_conf_2Dict(self.robots_pos[rname])
-        return rpos_msg
-
-    def gen_bpos_msg(self):
-        bpos_msg = dict()
-        now = rospy.Time.now()
-        bpos_msg['frame_id'] = "map"
-        bpos_msg['stamp'] = dict()
-        bpos_msg['stamp']['secs'] = now.secs
-        bpos_msg['stamp']['nsecs'] = now.nsecs
-        bpos_msg['ball'] = self._pose_conf_2Dict(self.ball_pos)
-        return bpos_msg
-
-    def _pose_conf_2Dict(self, pos):
-        new_rpos_dict = dict()
-        new_rpos_dict['x'] = pos.pose.x
-        new_rpos_dict['y'] = pos.pose.y
-        new_rpos_dict['t'] = pos.pose.theta
-        new_rpos_dict['c'] = pos.confidence
-        return new_rpos_dict
-        
-    def _ball_rela_conf_2Dict(self, pos):
-        new_bpos_dict = dict()
-        new_bpos_dict['x'] = pos.ball_relative.x
-        new_bpos_dict['y'] = pos.ball_relative.y
-        new_bpos_dict['c'] = pos.confidence
-        return new_bpos_dict
 
 def main():
     rospy.init_node("environment")
     env = environment()
     for i in range(4):
         env.add_robot('robot'+str(i+1))
+    env.add_ball()
     rate = rospy.Rate(10)
     while not rospy.is_shutdown():
         env.perform()
