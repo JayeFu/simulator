@@ -11,21 +11,22 @@ import json
 
 from std_msgs.msg import String
 
-from humanoid_league_msgs.msg import Position2D, BallRelative
+from humanoid_league_msgs.msg import Position2D
 
 class environment:
     def __init__(self):
         self.robots_pos = dict()
-        self.ball_pos = BallRelative()
+        self.ball_pos = Position2D()
         # both the messages are JSON ecoded msg
         self.rpos_pub = rospy.Publisher("/robots_pos", String, queue_size = 2)
         self.bpos_pub = rospy.Publisher("/ball_pos", String, queue_size = 2)
 
         # randomlize the ball_pos
+        
         self.ball_pos.header.stamp = rospy.Time.now()
-        self.ball_pos.header.frame_id = "field"
-        self.ball_pos.ball_relative.x = 9.0 * random.random() - 4.5
-        self.ball_pos.ball_relative.y = 6.0 * random.random() - 3.0
+        self.ball_pos.header.frame_id = "map"
+        self.ball_pos.pose.x = 9.0 * random.random() - 4.5
+        self.ball_pos.pose.y = 6.0 * random.random() - 3.0
         self.ball_pos.confidence = 1.0
 
     def add_robot(self, name):
@@ -34,37 +35,47 @@ class environment:
         rpos = self.robots_pos[name]
         # randomlize the robots_pos
         rpos.header.stamp = rospy.Time.now()
-        rpos.header.frame_id = "field"
+        rpos.header.frame_id = "map"
         rpos.pose.x = 9.0 * random.random() - 4.5
         rpos.pose.y = 6.0 * random.random() - 3.0
         rpos.pose.theta = 2 * PI * random.random()
         rpos.confidence = 1.0
 
     def perform(self):
+        rpos_msg = self.gen_rpos_msg()
+        bpos_msg = self.gen_bpos_msg()
+        outJson_r = json.dumps(rpos_msg)
+        outJson_b = json.dumps(bpos_msg)
+        
+        self.rpos_pub.publish(outJson_r)
+        self.bpos_pub.publish(outJson_b)
+        
+        for rname, rpos in self.robots_pos.iteritems():
+            rospy.loginfo("{} is at x:{}, y:{}, theta:{}".format(rname, rpos.pose.x, rpos.pose.y, rpos.pose.theta))
+        rospy.loginfo("ball is at x:{}, y:{}".format(self.ball_pos.pose.x, self.ball_pos.pose.y))
+
+    def gen_rpos_msg(self):
         rpos_msg = dict()
-        bpos_msg = dict()
         now = rospy.Time.now()
-        # omit the prefix 'header' for convenience
-        rpos_msg['frame_id'] = "field"
+        rpos_msg['frame_id'] = "map"
         rpos_msg['stamp'] = dict()
         rpos_msg['stamp']['secs'] = now.secs
         rpos_msg['stamp']['nsecs'] = now.nsecs
         for rname, rpos in self.robots_pos.iteritems():
-            rpos_msg[rname] = self._Position2D2Dict(self.robots_pos[rname])
+            rpos_msg[rname] = self._pose_conf_2Dict(self.robots_pos[rname])
+        return rpos_msg
 
-        bpos_msg['frame_id'] = "field"
+    def gen_bpos_msg(self):
+        bpos_msg = dict()
+        now = rospy.Time.now()
+        bpos_msg['frame_id'] = "map"
         bpos_msg['stamp'] = dict()
         bpos_msg['stamp']['secs'] = now.secs
         bpos_msg['stamp']['nsecs'] = now.nsecs
-        bpos_msg['ball'] = self._BallRelative2Dict(self.ball_pos)
+        bpos_msg['ball'] = self._pose_conf_2Dict(self.ball_pos)
+        return bpos_msg
 
-        rpos_msg = json.dumps(rpos_msg)
-        bpos_msg = json.dumps(bpos_msg)
-        
-        self.rpos_pub.publish(rpos_msg)
-        self.bpos_pub.publish(bpos_msg)
-
-    def _Position2D2Dict(self, pos):
+    def _pose_conf_2Dict(self, pos):
         new_rpos_dict = dict()
         new_rpos_dict['x'] = pos.pose.x
         new_rpos_dict['y'] = pos.pose.y
@@ -72,7 +83,7 @@ class environment:
         new_rpos_dict['c'] = pos.confidence
         return new_rpos_dict
         
-    def _BallRelative2Dict(self, pos):
+    def _ball_rela_conf_2Dict(self, pos):
         new_bpos_dict = dict()
         new_bpos_dict['x'] = pos.ball_relative.x
         new_bpos_dict['y'] = pos.ball_relative.y
