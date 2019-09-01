@@ -7,19 +7,11 @@
 import rospy
 import random
 from math import pi as PI
-import json
 
-from std_msgs.msg import String
 from tf.transformations import quaternion_from_euler, euler_from_quaternion
 import tf2_ros
 from geometry_msgs.msg import TransformStamped
-
-from humanoid_league_msgs.msg import Position2D
-
-class Pos2D:
-    def __init__(self, _x=0, _y=0):
-        self.x = _x
-        self.y = _y
+from simulator.Pos2D import Pos2D
 
 class environment:
     def __init__(self):
@@ -34,7 +26,8 @@ class environment:
         self.robots_name.append(name)
         new_x = 9.0 * random.random() - 4.5
         new_y = 6.0 * random.random() - 3.0
-        self.robots_pos[name] = Pos2D(new_x, new_y)
+        new_theta = 2 * PI * random.random()
+        self.robots_pos[name] = Pos2D(new_x, new_y, new_theta)
 
     def publish_robots(self):
         for name, pos in self.robots_pos.iteritems():
@@ -44,7 +37,7 @@ class environment:
             new_tf.child_frame_id = name
             new_tf.transform.translation.x = pos.x
             new_tf.transform.translation.y = pos.y
-            new_theta = 2 * PI * random.random()
+            new_theta = pos.theta
             q = quaternion_from_euler(0, 0, new_theta)
             new_tf.transform.rotation.x = q[0]
             new_tf.transform.rotation.y = q[1]
@@ -55,6 +48,7 @@ class environment:
     def add_ball(self):
         self.ball_pos.x = 9.0 * random.random() - 4.5
         self.ball_pos.y = 6.0 * random.random() - 3.0
+        self.ball_pos.theta = 0
 
     def publish_ball(self):
         new_tf = TransformStamped()

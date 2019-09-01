@@ -7,6 +7,8 @@ from math import pi as PI
 
 from std_msgs.msg import String
 
+# this class publish tobpics to behavior_monitor control panel
+
 class RobotPosChanger:
     def __init__(self, name):
         self.robotpos_pub = rospy.Publisher(name+"/positionInfo", String, queue_size = 2)

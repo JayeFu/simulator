@@ -4,31 +4,41 @@
 # and the ground truth ball position from topic '/robots_pos'
 
 import rospy
-import json
 from math import atan2 # be sure to use as atan2(y, x)
 from math import pi as PI
 import random
 
+import tf2_ros
+from tf.transformations import euler_from_quaternion, quaternion_from_euler
 from std_msgs.msg import String
 
-from humanoid_league_msgs.msg import Position2D, BallRelative
+from humanoid_league_msgs.msg import BallRelative
 
 class Vision:
     def __init__(self):
-        # sorry for use BallRelative in this place, but it is the 
-        self.cached_ballpos = Position2D()
+        self.tf_buffer = tf2_ros.Buffer(cache_time=rospy.Duration(2))
+        self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
+
         #this bpos_pub publishes whether the robot think it sees the ball and the relative position of the ball
         self.bpos_pub = rospy.Publisher('/ball_relative', BallRelative, queue_size = 2)
-        rospy.Subscriber('/ball_pos', String, self.ballpos_callback)
 
     # no need to pass bpos to perform. get it from cached_ballpos
-    def perform(self, rpos):
-        delta_x = self.cached_ballpos.pose.x - rpos.pose.x 
-        delta_y = self.cached_ballpos.pose.y - rpos.pose.y
+    def perform(self, name):
+        try:
+            tf_stamped = self.tf_buffer.lookup_transform("ball", name, rospy.Time(0))
+        except Exception as e:
+            rospy.logwarn(e)
+            return
+        trans = tf_stamped.transform.translation
+        rot = tf_stamped.transform.rotation
+        delta_x = trans.x
+        delta_y = trans.y
         # after restrict_angle(), delta_theta is in [0, 2*PI]
         delta_theta = self.restrict_angle(atan2(delta_y, delta_x))
-        # referring to environment.py, robot_dir_theta is in [0, 2*PI]
-        robot_dir_theta = rpos.pose.theta
+        # according to euler_from_quaternion, robo_dir_theta now is between[-PI, PI]
+        robot_dir_theta = euler_from_quaternion([rot.x, rot.y, rot.z, rot.w])[2]
+        # after restrict_angle(), robot_dir_theta is in [0, 2*PI]
+        robot_dir_theta = self.restrict_angle(robot_dir_theta)
         # thus, (delta_theta - robot_dir_theta) is in [-2*PI, 2*PI]
         # after restrict_angle(), delta_angle is in [0, 2*PI]
         delta_angle = delta_theta - robot_dir_theta
