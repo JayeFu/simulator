@@ -22,6 +22,7 @@ class Robot:
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
 
         # but cache the publisher
+        # equal to the self_localization module
         # publish the position with noise to topic /amcl_pose
         self.pos_pub = rospy.Publisher("/amcl_pose", PoseWithCovarianceStamped, queue_size = 2)
 
@@ -68,7 +69,7 @@ class Robot:
 
 def main():
     rospy.init_node('robot')
-    robot = Robot('robot1')
+    robot = Robot('base_footprint')
     rate = rospy.Rate(10)
     while not rospy.is_shutdown():
         robot.perform()

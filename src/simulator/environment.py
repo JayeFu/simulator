@@ -94,8 +94,11 @@ class environment:
 def main():
     rospy.init_node("environment")
     env = environment()
+    '''
     for i in range(4):
         env.add_robot('robot'+str(i+1))
+    '''
+    env.add_robot('base_footprint')
     env.add_ball()
     rate = rospy.Rate(10)
     while not rospy.is_shutdown():
