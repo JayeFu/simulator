@@ -24,9 +24,9 @@ class environment:
         
     def add_robot(self, name):
         self.robots_name.append(name)
-        new_x = 9.0 * random.random() - 4.5
-        new_y = 6.0 * random.random() - 3.0
-        new_theta = 2 * PI * random.random()
+        new_x = 1.0
+        new_y = 2.0
+        new_theta = 1.0/4.0*PI
         self.robots_pos[name] = Pos2D(new_x, new_y, new_theta)
 
     def publish_robots(self):
@@ -46,8 +46,8 @@ class environment:
             self.tf_broadcaster.sendTransform(new_tf)
 
     def add_ball(self):
-        self.ball_pos.x = 9.0 * random.random() - 4.5
-        self.ball_pos.y = 6.0 * random.random() - 3.0
+        self.ball_pos.x = 2.5
+        self.ball_pos.y = 3.8
         self.ball_pos.theta = 0
 
     def publish_ball(self):
@@ -69,26 +69,43 @@ class environment:
         self.publish_ball()
         
         for name in self.robots_name:
-            try:
-                tf_stamped = self.tf_buffer.lookup_transform(name, "map", rospy.Time(0))
-            except Exception as e:
-                rospy.logwarn(e)
-                return
-            trans = tf_stamped.transform.translation
-            rot = tf_stamped.transform.rotation
-            x = trans.x
-            y = trans.y
-            theta = euler_from_quaternion([rot.x,rot.y,rot.z,rot.w])[2]
-            rospy.loginfo("{} is at x:{}, y:{}, theta:{}".format(name, x, y, theta))
+            self.show_pos("map", name, self.tf_buffer)
+        self.show_pos("map", "ball", self.tf_buffer)
+        for name in self.robots_name:
+            self.show_pos(name, "ball", self.tf_buffer)
+
+    def show_pos(self, target, source, buffer, broadcaster=None):
         try:
-            tf_stamped = self.tf_buffer.lookup_transform("ball", "map", rospy.Time(0))
+            tf_stamped = buffer.lookup_transform(target, source, rospy.Time(0))
         except Exception as e:
             rospy.logwarn(e)
             return
         trans = tf_stamped.transform.translation
+        rot = tf_stamped.transform.rotation
         x = trans.x
         y = trans.y
-        rospy.loginfo("ball is at x:{}, y:{}".format(x, y))
+        z = trans.z
+
+        a = euler_from_quaternion([rot.x, rot.y, rot.z, rot.w])
+        roll = a[0]
+        pitch = a[1]
+        yaw = a[2]
+        rospy.loginfo("from {} to {} is x:{}, y:{}, z:{}, roll:{}, pitch:{}, yaw:{}".format(source, target, x, y, z, roll, pitch, yaw))
+
+        if broadcaster:
+            new_tf = TransformStamped()
+            new_tf.header.frame_id = "base_footprint"
+            new_tf.header.stamp = rospy.Time.now()
+            new_tf.child_frame_id = "ballseen"
+            new_tf.transform.translation.x = x
+            new_tf.transform.translation.y = y
+            q = quaternion_from_euler(roll, yaw, pitch)
+            new_tf.transform.rotation.x = q[0]
+            new_tf.transform.rotation.y = q[1]
+            new_tf.transform.rotation.z = q[2]
+            new_tf.transform.rotation.w = q[3]
+            broadcaster.sendTransform(new_tf)
+
         
 
 def main():
