@@ -1,0 +1,9 @@
+digraph G {
+"map" -> "base_footprint"[label="Broadcaster: /environment\nAverage rate: 10.203 Hz\nMost recent transform: 1567321636.566 ( 0.021 sec old)\nBuffer length: 4.901 sec\n"];
+"map" -> "ball"[label="Broadcaster: /environment\nAverage rate: 10.203 Hz\nMost recent transform: 1567321636.566 ( 0.021 sec old)\nBuffer length: 4.900 sec\n"];
+"base_footprint" -> "ballseen"[label="Broadcaster: /test_tf_coordinate\nAverage rate: 5.208 Hz\nMost recent transform: 1567321636.479 ( 0.108 sec old)\nBuffer length: 4.800 sec\n"];
+edge [style=invis];
+ subgraph cluster_legend { style=bold; color=black; label ="view_frames Result";
+"Recorded at time: 1567321636.587"[ shape=plaintext ] ;
+ }->"map";
+}

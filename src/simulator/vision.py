@@ -35,16 +35,9 @@ class Vision:
         delta_y = trans.y
         # after restrict_angle(), delta_theta is in [0, 2*PI]
         delta_theta = self.restrict_angle(atan2(delta_y, delta_x))
-        # according to euler_from_quaternion, robo_dir_theta now is between[-PI, PI]
-        robot_dir_theta = euler_from_quaternion([rot.x, rot.y, rot.z, rot.w])[2]
-        # after restrict_angle(), robot_dir_theta is in [0, 2*PI]
-        robot_dir_theta = self.restrict_angle(robot_dir_theta)
-        # thus, (delta_theta - robot_dir_theta) is in [-2*PI, 2*PI]
-        # after restrict_angle(), delta_angle is in [0, 2*PI]
-        delta_angle = delta_theta - robot_dir_theta
-        delta_angle = self.restrict_angle(delta_angle)
-        condition1 = 0 < delta_angle < 1/4*PI
-        condition2 = 7/4*PI < delta_angle < 2*PI
+        rospy.loginfo('RELATIVE TO ROBOT, ball is at x:{}, y{}, theta:{}'.format(delta_x, delta_y, delta_theta))
+        condition1 = 0 < delta_theta < 1.0/4.0*PI
+        condition2 = 7.0/4.0*PI < delta_theta < 2*PI
         rospy.loginfo("condition1 is {}, condition2 is {}".format(condition1, condition2))
         if condition1 or condition2:
             rospy.loginfo("VISION sees the ball at relative position x:{}, y:{}".format(delta_x, delta_y))
