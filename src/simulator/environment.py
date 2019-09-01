@@ -24,9 +24,9 @@ class environment:
         
     def add_robot(self, name):
         self.robots_name.append(name)
-        new_x = 1.0
-        new_y = 2.0
-        new_theta = 1.0/4.0*PI
+        new_x = 9.0 * random.random() - 4.5
+        new_y = 6.0 * random.random() - 3.0
+        new_theta = 2 * PI * random.random()
         self.robots_pos[name] = Pos2D(new_x, new_y, new_theta)
 
     def publish_robots(self):
@@ -46,8 +46,8 @@ class environment:
             self.tf_broadcaster.sendTransform(new_tf)
 
     def add_ball(self):
-        self.ball_pos.x = 2.5
-        self.ball_pos.y = 3.8
+        self.ball_pos.x = 9.0 * random.random() - 4.5
+        self.ball_pos.y = 6.0 * random.random() - 3.0
         self.ball_pos.theta = 0
 
     def publish_ball(self):

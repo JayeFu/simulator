@@ -25,7 +25,7 @@ class Vision:
     # no need to pass bpos to perform. get it from cached_ballpos
     def perform(self, name):
         try:
-            tf_stamped = self.tf_buffer.lookup_transform("ball", name, rospy.Time(0))
+            tf_stamped = self.tf_buffer.lookup_transform(name, "ball", rospy.Time(0))
         except Exception as e:
             rospy.logwarn(e)
             return

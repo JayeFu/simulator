@@ -35,7 +35,7 @@ class Robot:
     
     def find_pos(self):
         try:
-            tf_stamped = self.tf_buffer.lookup_transform(self._name, "map", rospy.Time(0))
+            tf_stamped = self.tf_buffer.lookup_transform("map", self._name, rospy.Time(0))
         except Exception as e:
             rospy.logwarn(e)
             return
