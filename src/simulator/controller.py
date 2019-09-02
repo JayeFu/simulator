@@ -9,13 +9,15 @@ from tf.transformations import euler_from_quaternion
 
 from humanoid_league_msgs.msg import RobotControlState, Position2D
 
+# Since controller has to cache a position, maybe make it a part of robot is better. Maybe will change in the future.
+
 class Controller:
     def __init__(self):
         self.position = Position2D()
 
         self.robot_state_pub = rospy.Publisher("robot_state", RobotControlState, queue_size = 2)
 
-        self.vel_pub = rospy.Publisher("robot/cmd_vel", Twist, queue_size=1)
+        self.vel_pub = rospy.Publisher("base_footprint/cmd_vel", Twist, queue_size=1)
 
         rospy.Subscriber("move_base_simple/goal", PoseStamped, self.move_base_callback)
         rospy.Subscriber("/amcl_pose", PoseWithCovarianceStamped, self.position_callback)
@@ -29,9 +31,13 @@ class Controller:
         msg = Twist()
         delta_x = pos.pose.position.x - self.position.pose.x
         delta_y = pos.pose.position.y - self.position.pose.y
+        q = pos.pose.orientation
+        a = euler_from_quaternion([q.x, q.y, q.z, q.w])
+        delta_theta = a[2] - self.position.pose.theta
         # the following coefficient from learning_tf2.turtle_tf2_listner
-        msg.angular.z = 4 * math.atan2(delta_y, delta_x)
+        msg.angular.z = 4 * math.atan2(delta_y, delta_x) + 5 * delta_theta
         msg.linear.x = 0.5 * math.sqrt(delta_x**2 + delta_y**2)
+        # the msg is under the coordinate of the robot itself
         self.vel_pub.publish(msg)
 
     def position_callback(self, pos):

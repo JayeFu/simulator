@@ -7,13 +7,13 @@ import rospy
 from math import atan2 # be sure to use as atan2(y, x)
 from math import pi as PI
 import random
-import numpy as np
 
 import tf2_ros
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 from std_msgs.msg import String
 
 from humanoid_league_msgs.msg import BallRelative
+from simulator.Pos2D import add_noise
 
 class Vision:
     def __init__(self):
@@ -45,8 +45,8 @@ class Vision:
             new_bpos = BallRelative()
             new_bpos.header.frame_id = "base_footprint"
             new_bpos.header.stamp = rospy.Time.now()
-            new_bpos.ball_relative.x = self.add_noise(delta_x)
-            new_bpos.ball_relative.y = self.add_noise(delta_y)
+            new_bpos.ball_relative.x = add_noise(delta_x)
+            new_bpos.ball_relative.y = add_noise(delta_y)
             new_bpos.confidence = random.random()
             self.bpos_pub.publish(new_bpos)
         else:
@@ -54,5 +54,3 @@ class Vision:
 
     def restrict_angle(self, angle):
         return angle % (2 * PI)
-    def add_noise(self, num=0):
-        return num + float(np.random.randn(1))

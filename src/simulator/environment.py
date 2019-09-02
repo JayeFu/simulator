@@ -11,8 +11,8 @@ import numpy as np
 
 from tf.transformations import quaternion_from_euler, euler_from_quaternion
 import tf2_ros
-from geometry_msgs.msg import TransformStamped
-from simulator.Pos2D import Pos2D
+from geometry_msgs.msg import TransformStamped, Pose2D
+from simulator.Pos2D import Pos2D, add_noise
 
 class environment:
     def __init__(self):
@@ -22,6 +22,8 @@ class environment:
         self.tf_broadcaster = tf2_ros.TransformBroadcaster()
         self.tf_buffer = tf2_ros.Buffer(cache_time=rospy.Duration(2))
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
+        
+        rospy.Subscriber("base_footprint/pos_gt", Pose2D, self.pos_gt_callback)
         
     def add_robot(self, name):
         self.robots_name.append(name)
@@ -53,9 +55,9 @@ class environment:
             new_tf.header.frame_id = "map"
             new_tf.header.stamp = rospy.Time.now()
             new_tf.child_frame_id = name
-            new_tf.transform.translation.x = self.add_noise(pos.x)
-            new_tf.transform.translation.y = self.add_noise(pos.y)
-            new_theta = self.add_noise(pos.theta)
+            new_tf.transform.translation.x = add_noise(pos.x)
+            new_tf.transform.translation.y = add_noise(pos.y)
+            new_theta = add_noise(pos.theta)
             q = quaternion_from_euler(0, 0, new_theta)
             new_tf.transform.rotation.x = q[0]
             new_tf.transform.rotation.y = q[1]
@@ -87,9 +89,9 @@ class environment:
         new_tf.header.frame_id = "map"
         new_tf.header.stamp = rospy.Time.now()
         new_tf.child_frame_id = "ball"
-        new_tf.transform.translation.x = self.add_noise(self.ball_pos.x)
-        new_tf.transform.translation.y = self.add_noise(self.ball_pos.y)
-        q = quaternion_from_euler(0, 0, self.add_noise(0))
+        new_tf.transform.translation.x = add_noise(self.ball_pos.x)
+        new_tf.transform.translation.y = add_noise(self.ball_pos.y)
+        q = quaternion_from_euler(0, 0, add_noise(0))
         new_tf.transform.rotation.x = q[0]
         new_tf.transform.rotation.y = q[1]
         new_tf.transform.rotation.z = q[2]
@@ -126,8 +128,9 @@ class environment:
         yaw = a[2]
         rospy.loginfo("from {} to {} is x:{}, y:{}, z:{}, roll:{}, pitch:{}, yaw:{}".format(source, target, x, y, z, roll, pitch, yaw))
 
-    def add_noise(self, num=0):
-        return num + float(np.random.randn(1))
+    def pos_gt_callback(self, pose2d):
+        self.robots_pos["base_footprint"] = Pos2D(pose2d.x, pose2d.y, pose2d.theta)
+        
 
 def main():
     rospy.init_node("environment")
@@ -138,7 +141,7 @@ def main():
     '''
     env.add_robot('base_footprint')
     env.add_ball()
-    rate = rospy.Rate(10)
+    rate = rospy.Rate(20)
     while not rospy.is_shutdown():
         env.perform()
         rate.sleep()
