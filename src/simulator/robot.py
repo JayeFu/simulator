@@ -16,7 +16,7 @@ from simulator.Pos2D import Pos2D
 class Robot:
     def __init__(self, name):
         self._name = name
-        # self._pos stores the ground truth of the robot's position
+        # self._pos stores the robot's position with noise
         self._pos = Pos2D()
         self.tf_buffer = tf2_ros.Buffer(cache_time=rospy.Duration(2))
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
@@ -31,7 +31,7 @@ class Robot:
     def perform(self):
         self.find_pos()
         self.vision.perform(self._name)
-        self.pub_pos_with_noise()
+        self.pub_pos()
     
     def find_pos(self):
         try:
@@ -46,7 +46,8 @@ class Robot:
         self._pos.theta = euler_from_quaternion([rot.x, rot.y, rot.z, rot.w])[2]
         rospy.loginfo("{} is at x:{}, y:{}, theta:{}".format(self._name, self._pos.x, self._pos.y, self._pos.theta))
 
-    def pub_pos_with_noise(self):
+    def pub_pos(self):
+        # this funciton publishes the robot's position with noise, since self._pos is with noise itself
         new_pos = PoseWithCovarianceStamped()
         # although I think it is important to fill all the blank in new_pos, but according to world_model_capsule, just fill 
         # new_pos.header, 
@@ -55,17 +56,18 @@ class Robot:
         # new_pos,pose.pose.orientation is ok
         new_pos.header.frame_id = "map"
         new_pos.header.stamp = rospy.Time.now()
-        new_pos.pose.pose.position.x = self.add_random(self._pos.x)
-        new_pos.pose.pose.position.y = self.add_random(self._pos.y)
-        new_orient = quaternion_from_euler(0, 0, self.add_random(self._pos.theta))
+        new_pos.pose.pose.position.x = self._pos.x
+        new_pos.pose.pose.position.y = self._pos.y
+        new_orient = quaternion_from_euler(0, 0, self._pos.theta)
         new_pos.pose.pose.orientation.x = new_orient[0]
         new_pos.pose.pose.orientation.y = new_orient[1]
         new_pos.pose.pose.orientation.z = new_orient[2]
         new_pos.pose.pose.orientation.w = new_orient[3]
         self.pos_pub.publish(new_pos)
-    
+    '''
     def add_random(self, num):
         return num+float(randn(1))
+    '''
 
 def main():
     rospy.init_node('robot')

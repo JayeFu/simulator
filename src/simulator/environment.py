@@ -7,6 +7,7 @@
 import rospy
 import random
 from math import pi as PI
+import numpy as np
 
 from tf.transformations import quaternion_from_euler, euler_from_quaternion
 import tf2_ros
@@ -27,17 +28,34 @@ class environment:
         new_x = 9.0 * random.random() - 4.5
         new_y = 6.0 * random.random() - 3.0
         new_theta = 2 * PI * random.random()
+        new_theta = PI/4.0
         self.robots_pos[name] = Pos2D(new_x, new_y, new_theta)
 
-    def publish_robots(self):
+    def publish_robots_no_noise(self):
+        for name, pos in self.robots_pos.iteritems():
+            new_tf = TransformStamped()
+            new_tf.header.frame_id = "map"
+            new_tf.header.stamp = rospy.Time.now()
+            new_tf.child_frame_id = name+"_gt" # gt indicates ground_truth
+            new_tf.transform.translation.x = pos.x
+            new_tf.transform.translation.y = pos.y
+            new_theta = pos.theta
+            q = quaternion_from_euler(0, 0, new_theta)
+            new_tf.transform.rotation.x = q[0]
+            new_tf.transform.rotation.y = q[1]
+            new_tf.transform.rotation.z = q[2]
+            new_tf.transform.rotation.w = q[3]
+            self.tf_broadcaster.sendTransform(new_tf)
+    
+    def publish_robots_with_noise(self):
         for name, pos in self.robots_pos.iteritems():
             new_tf = TransformStamped()
             new_tf.header.frame_id = "map"
             new_tf.header.stamp = rospy.Time.now()
             new_tf.child_frame_id = name
-            new_tf.transform.translation.x = pos.x
-            new_tf.transform.translation.y = pos.y
-            new_theta = pos.theta
+            new_tf.transform.translation.x = self.add_noise(pos.x)
+            new_tf.transform.translation.y = self.add_noise(pos.y)
+            new_theta = self.add_noise(pos.theta)
             q = quaternion_from_euler(0, 0, new_theta)
             new_tf.transform.rotation.x = q[0]
             new_tf.transform.rotation.y = q[1]
@@ -50,11 +68,11 @@ class environment:
         self.ball_pos.y = 6.0 * random.random() - 3.0
         self.ball_pos.theta = 0
 
-    def publish_ball(self):
+    def publish_ball_no_noise(self):
         new_tf = TransformStamped()
         new_tf.header.frame_id = "map"
         new_tf.header.stamp = rospy.Time.now()
-        new_tf.child_frame_id = "ball"
+        new_tf.child_frame_id = "ball_gt" # gt indicates ground truth
         new_tf.transform.translation.x = self.ball_pos.x
         new_tf.transform.translation.y = self.ball_pos.y
         q = quaternion_from_euler(0, 0, 0)
@@ -64,15 +82,31 @@ class environment:
         new_tf.transform.rotation.w = q[3]
         self.tf_broadcaster.sendTransform(new_tf)
 
+    def publish_ball_with_noise(self):
+        new_tf = TransformStamped()
+        new_tf.header.frame_id = "map"
+        new_tf.header.stamp = rospy.Time.now()
+        new_tf.child_frame_id = "ball"
+        new_tf.transform.translation.x = self.add_noise(self.ball_pos.x)
+        new_tf.transform.translation.y = self.add_noise(self.ball_pos.y)
+        q = quaternion_from_euler(0, 0, self.add_noise(0))
+        new_tf.transform.rotation.x = q[0]
+        new_tf.transform.rotation.y = q[1]
+        new_tf.transform.rotation.z = q[2]
+        new_tf.transform.rotation.w = q[3]
+        self.tf_broadcaster.sendTransform(new_tf)
+
     def perform(self):
-        self.publish_robots()
-        self.publish_ball()
+        self.publish_robots_no_noise()
+        self.publish_robots_with_noise()
+        self.publish_ball_no_noise()
+        self.publish_ball_with_noise()
         
         for name in self.robots_name:
-            self.show_pos("map", name, self.tf_buffer)
-        self.show_pos("map", "ball", self.tf_buffer)
+            self.show_pos("map", name+"_gt", self.tf_buffer)
+        self.show_pos("map", "ball_gt", self.tf_buffer)
         for name in self.robots_name:
-            self.show_pos(name, "ball", self.tf_buffer)
+            self.show_pos(name, "ball_gt", self.tf_buffer)
 
     def show_pos(self, target, source, buffer, broadcaster=None):
         try:
@@ -92,21 +126,8 @@ class environment:
         yaw = a[2]
         rospy.loginfo("from {} to {} is x:{}, y:{}, z:{}, roll:{}, pitch:{}, yaw:{}".format(source, target, x, y, z, roll, pitch, yaw))
 
-        if broadcaster:
-            new_tf = TransformStamped()
-            new_tf.header.frame_id = "base_footprint"
-            new_tf.header.stamp = rospy.Time.now()
-            new_tf.child_frame_id = "ballseen"
-            new_tf.transform.translation.x = x
-            new_tf.transform.translation.y = y
-            q = quaternion_from_euler(roll, yaw, pitch)
-            new_tf.transform.rotation.x = q[0]
-            new_tf.transform.rotation.y = q[1]
-            new_tf.transform.rotation.z = q[2]
-            new_tf.transform.rotation.w = q[3]
-            broadcaster.sendTransform(new_tf)
-
-        
+    def add_noise(self, num=0):
+        return num + float(np.random.randn(1))
 
 def main():
     rospy.init_node("environment")
