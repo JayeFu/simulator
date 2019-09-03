@@ -2,7 +2,7 @@
     <node name="referee" pkg="simulator" type="referee.py" />
     <node name="environment" pkg="simulator" type="environment.py" />
     <node name="referee_box" pkg="simulator" type="MainWindow.py" />
-    <node name="robot" pkg="simulator" type="robot.py" output="screen" />
-    <node name="controller" pkg="simulator" type="controller.py" />
+    <node name="robot" pkg="simulator" type="robot.py" />
+    <node name="controller" pkg="simulator" type="controller.py" output="screen" />
     <node name="move" pkg="simulator" type="move.py" output="screen" />
 </launch>

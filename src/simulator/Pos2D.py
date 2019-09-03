@@ -9,4 +9,4 @@ class Pos2D:
         self.theta = _t
 
 def add_noise(num=0):
-    return num + float(np.random.randn(1))
+    return num + float(np.random.normal(0, 0.2, 1))

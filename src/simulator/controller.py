@@ -14,6 +14,10 @@ from humanoid_league_msgs.msg import RobotControlState, Position2D
 class Controller:
     def __init__(self):
         self.position = Position2D()
+        self.linear_th = 0.1
+        self.angular_th = 0.1
+
+        self.tf_broadcaster = tf2_ros.TransformBroadcaster()
 
         self.robot_state_pub = rospy.Publisher("robot_state", RobotControlState, queue_size = 2)
 
@@ -28,15 +32,32 @@ class Controller:
         self.robot_state_pub.publish(new_robot_state)
 
     def move_base_callback(self, pos):
+        # for visualization
+        new_tf = TransformStamped()
+        new_tf.header.frame_id = "map"
+        new_tf.header.stamp = rospy.Time.now()
+        new_tf.child_frame_id = "target_pos"
+        new_tf.transform.translation.x = pos.pose.position.x
+        new_tf.transform.translation.y = pos.pose.position.y
+        new_tf.transform.rotation = pos.pose.orientation
+        self.tf_broadcaster.sendTransform(new_tf)
+
         msg = Twist()
+        rospy.loginfo("TARGET pos is x:{}, y:{}".format(pos.pose.position.x, pos.pose.position.y))
+        rospy.loginfo("SELF pos is x:{}, y:{}".format(self.position.pose.x, self.position.pose.y)) # added with noise
         delta_x = pos.pose.position.x - self.position.pose.x
         delta_y = pos.pose.position.y - self.position.pose.y
+        rospy.loginfo("delta_x:{}, delta_y:{}".format(delta_x, delta_y))
         q = pos.pose.orientation
         a = euler_from_quaternion([q.x, q.y, q.z, q.w])
         delta_theta = a[2] - self.position.pose.theta
-        # the following coefficient from learning_tf2.turtle_tf2_listner
-        msg.angular.z = 4 * math.atan2(delta_y, delta_x) + 5 * delta_theta
-        msg.linear.x = 0.5 * math.sqrt(delta_x**2 + delta_y**2)
+        msg.angular.z = 0.05 * math.atan2(delta_y, delta_x)
+        msg.linear.x = 0.05 * math.sqrt(delta_x**2 + delta_y**2)
+        if msg.angular.z < self.angular_th and msg.linear.x < self.linear_th:
+            self.publish_robot_state(RobotControlState.MOTOR_OFF)
+        else:
+            self.publish_robot_state(RobotControlState.WALKING)
+        rospy.loginfo("INTENDED velocity is linear_x: {}, angular_z: {}".format(msg.linear.x, msg.angular.z))
         # the msg is under the coordinate of the robot itself
         self.vel_pub.publish(msg)
 
